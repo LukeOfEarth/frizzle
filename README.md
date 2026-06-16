@@ -6,9 +6,20 @@ A local AWS EventBridge simulator that lets you build and test event-driven syst
 
 ## Installation
 
+**Go install** (needs Go 1.22+):
+
 ```
 go install github.com/LukeOfEarth/frizzle@latest
 ```
+
+**Homebrew** (macOS / Linux):
+
+```
+brew tap LukeOfEarth/tap
+brew install frizzle
+```
+
+**GitHub Releases** — download pre-built binaries for macOS, Linux, and Windows from the [releases page](https://github.com/LukeOfEarth/frizzle/releases).
 
 ## Getting started
 
