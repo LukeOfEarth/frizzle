@@ -82,6 +82,8 @@ EventBridgeClient client = EventBridgeClient.builder()
     .build();
 ```
 
+</details>
+
 <details>
 <summary><strong>C# (.NET SDK)</strong></summary>
 
