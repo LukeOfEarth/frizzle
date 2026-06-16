@@ -2,27 +2,30 @@
 
 <p align="center"><img src="frizzle.png" alt="frizzle" width="200"/></p>
 
-Local AWS Event Bus simulator for testing event-driven systems without an AWS account.
+A local AWS EventBridge simulator that lets you build and test event-driven systems without needing an AWS account. Point your existing AWS SDK at frizzle, send events, and watch them get routed to your local services — just like the real thing.
 
-## Install
+## Installation
 
 ```
 go install github.com/LukeOfEarth/frizzle@latest
 ```
 
-## Quick start
+## Getting started
 
-Start frizzle (catches all events, logs them, and forwards to a downstream endpoint):
+The fastest way to try frizzle is with the `--forward` flag. This starts a single catch-all bus that logs every event and forwards it to a downstream HTTP endpoint:
 
 ```
 frizzle start --port 4000 --forward http://localhost:3001/webhook
 ```
 
-### Point your AWS SDK at frizzle
+That's it — frizzle is now listening on port 4000. Any event you send will be printed to your terminal and POSTed to `http://localhost:3001/webhook`.
 
-Configure your EventBridge client to use frizzle's local endpoint instead of AWS:
+### Pointing your AWS SDK at frizzle
 
-**Go SDK v2**
+The key idea is simple: tell your EventBridge client to talk to `localhost` instead of AWS. The credentials don't matter (use any dummy values), and frizzle handles the rest.
+
+<details>
+<summary><strong>Go SDK v2</strong></summary>
 
 ```go
 cfg, _ := config.LoadDefaultConfig(ctx,
@@ -34,7 +37,10 @@ client := eventbridge.NewFromConfig(cfg, func(o *eventbridge.Options) {
 })
 ```
 
-**JavaScript SDK v3**
+</details>
+
+<details>
+<summary><strong>JavaScript SDK v3</strong></summary>
 
 ```js
 import { EventBridgeClient, PutEventsCommand } from "@aws-sdk/client-eventbridge";
@@ -46,7 +52,10 @@ const client = new EventBridgeClient({
 });
 ```
 
-**Python boto3**
+</details>
+
+<details>
+<summary><strong>Python (boto3)</strong></summary>
 
 ```python
 import boto3
@@ -59,7 +68,10 @@ client = boto3.client("events",
 )
 ```
 
-**Java SDK v2**
+</details>
+
+<details>
+<summary><strong>Java SDK v2</strong></summary>
 
 ```java
 EventBridgeClient client = EventBridgeClient.builder()
@@ -70,9 +82,47 @@ EventBridgeClient client = EventBridgeClient.builder()
     .build();
 ```
 
-Now your application's `PutEvents` calls go to frizzle instead of AWS.
+<details>
+<summary><strong>C# (.NET SDK)</strong></summary>
+
+```csharp
+using Amazon.EventBridge;
+using Amazon.Runtime;
+
+var client = new AmazonEventBridgeClient(
+    new BasicAWSCredentials("test", "test"),
+    new AmazonEventBridgeConfig
+    {
+        ServiceURL = "http://localhost:4000",
+        AuthenticationRegion = "us-east-1"
+    });
+```
+
+</details>
+
+<details>
+<summary><strong>Rust SDK</strong></summary>
+
+```rust
+use aws_sdk_eventbridge::{config::Region, Client, Config};
+use aws_credential_types::Credentials;
+
+let creds = Credentials::new("test", "test", None, None, "static");
+let config = Config::builder()
+    .region(Region::new("us-east-1"))
+    .endpoint_url("http://localhost:4000")
+    .credentials_provider(creds)
+    .build();
+let client = Client::from_conf(config);
+```
+
+</details>
+
+Once configured, your application's `PutEvents` calls will go to frizzle instead of AWS — no other code changes needed.
 
 ### Quick test with curl
+
+You don't need an SDK to try things out. frizzle has a simplified HTTP endpoint designed for manual testing:
 
 ```
 curl -X POST http://localhost:4000/events/default \
@@ -88,17 +138,21 @@ curl -X POST http://localhost:4000/events/default \
   }'
 ```
 
-## Config file mode
+## Configuration file
 
-For multiple buses, rules, and pattern matching:
+For more advanced setups — multiple buses, event routing rules, and pattern matching — you'll want a config file.
+
+Generate one with `frizzle init`:
 
 ```
-frizzle init                # scaffold full example config
-frizzle init --simple       # minimal single-bus config
-frizzle start               # reads .frizzle/frizzle.json from cwd
+frizzle init                # creates a full example config with comments
+frizzle init --simple       # creates a minimal single-bus config
+frizzle start               # automatically reads .frizzle/frizzle.json from the current directory
 ```
 
-### .frizzle/frizzle.json structure
+### Config structure
+
+The config file lives at `.frizzle/frizzle.json` in your project directory. Here's what a typical one looks like:
 
 ```json
 {
@@ -130,42 +184,45 @@ frizzle start               # reads .frizzle/frizzle.json from cwd
 }
 ```
 
-Rules are evaluated top-to-bottom. Every matching rule fires all its targets (fan-out). A catch-all rule with an empty `pattern: {}` matches everything — place it last to log any unmatched events.
+**How rules work:** Rules are evaluated top-to-bottom. When an event matches a rule's pattern, all of that rule's targets fire (fan-out). If you want a catch-all to log unmatched events, add a rule with an empty `pattern: {}` at the bottom — it matches everything.
+
+You can also point to a config file in a different location with `--config path/to/config.json`.
 
 ## Pattern matching
 
-Supports the full EventBridge pattern syntax:
+frizzle supports the full EventBridge pattern syntax, so the rules you write locally will behave the same way they do in production.
 
-| Operator | Example |
-|---|---|
-| Exact string | `"source": ["myapp.orders"]` |
-| Prefix | `{"prefix": "myapp.orders"}` |
-| Suffix | `{"suffix": ".pdf"}` |
-| Wildcard | `{"wildcard": "report_*.pdf"}` |
-| Case-insensitive | `{"equals-ignore-case": "orderplaced"}` |
-| Anything-but | `{"anything-but": ["val1", "val2"]}` or `{"anything-but": {"prefix": "prod."}}` |
-| Exists | `{"exists": true}` / `{"exists": false}` |
-| Numeric | `{"numeric": [">=", 50, "<", 200]}` |
-| CIDR | `{"cidr": "10.0.0.0/24"}` |
+| Operator | Example | What it does |
+|---|---|---|
+| Exact match | `"source": ["myapp.orders"]` | Matches the exact string value |
+| Prefix | `{"prefix": "myapp.orders"}` | Matches values starting with the given string |
+| Suffix | `{"suffix": ".pdf"}` | Matches values ending with the given string |
+| Wildcard | `{"wildcard": "report_*.pdf"}` | Matches using `*` as a wildcard |
+| Case-insensitive | `{"equals-ignore-case": "orderplaced"}` | Matches regardless of case |
+| Anything-but | `{"anything-but": ["val1", "val2"]}` | Matches any value *except* those listed |
+| Anything-but (prefix) | `{"anything-but": {"prefix": "prod."}}` | Matches values that *don't* start with the given prefix |
+| Exists | `{"exists": true}` / `{"exists": false}` | Checks whether a field is present (or absent) |
+| Numeric | `{"numeric": [">=", 50, "<", 200]}` | Compares numeric values with range operators |
+| CIDR | `{"cidr": "10.0.0.0/24"}` | Matches IP addresses within a CIDR block |
 
-Array values use OR logic. Multiple top-level keys use AND logic. Nested `detail` fields can be matched via nested objects or dot notation.
+When you list multiple values in an array, they're combined with **OR** logic (the event matches if *any* value matches). When you have multiple top-level keys in a pattern, they're combined with **AND** logic (the event must match *all* of them). You can match nested fields inside `detail` using nested objects or dot notation.
 
 ## API
 
-frizzle speaks two protocols on the same port:
+frizzle serves two protocols on the same port, so you can use it with both real AWS SDKs and manual testing tools without any extra configuration.
 
 ### SDK endpoint — `POST /`
 
-Accepts the real `EventBridgeClient.PutEvents` wire format. Point your SDK's endpoint here.
+This is the endpoint your AWS SDK talks to. It accepts the real `PutEvents` wire format with the standard AWS headers:
 
-Header: `X-Amz-Target: AWSEvents.PutEvents`
-Content-Type: `application/x-amz-json-1.1`
+- Header: `X-Amz-Target: AWSEvents.PutEvents`
+- Content-Type: `application/x-amz-json-1.1`
 
-The `Detail` field must be a JSON string (as the SDK sends it). The `EventBusName` field on each entry selects the bus.
+The `Detail` field must be a JSON string (which is how the SDK sends it). Each entry's `EventBusName` field determines which bus it's routed to.
 
-### Curl endpoint — `POST /events/{bus-name}`
+### Curl-friendly endpoint — `POST /events/{bus-name}`
 
-Simplified format for manual testing. The bus name is in the URL path. `detail` is a JSON object.
+A simplified format designed for manual testing. The bus name goes in the URL path, and the `detail` field is a regular JSON object (not a string):
 
 ```json
 {
@@ -185,7 +242,7 @@ Simplified format for manual testing. The bus name is in the URL path. `detail` 
 }
 ```
 
-Response:
+Both endpoints return the same response format:
 
 ```json
 {
@@ -194,15 +251,11 @@ Response:
 }
 ```
 
-Omitting the bus name (or using `/`) defaults to the first configured bus.
+If you omit the bus name (or just POST to `/`), the event goes to the first configured bus.
 
 ## Target types
 
-| Type | Description |
+| Type | What it does |
 |---|---|
-| `log` | Prints the event to stdout |
-| `http` | POSTs the full event JSON to a URL |
-
-## Config location
-
-Per-directory — reads `.frizzle/frizzle.json` from the current working directory. Use `--config` to point at a different file. No global configs.
+| `log` | Prints the full event to stdout — useful for debugging |
+| `http` | POSTs the event as JSON to a URL — use this to wire up your local services |
