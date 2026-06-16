@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -52,6 +53,11 @@ Use --simple to generate a minimal config with a single catch-all bus.`,
 		}
 
 		fmt.Println("Created .frizzle/frizzle.json")
+
+		if err := ensureGitignore(); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: could not update .gitignore: %v\n", err)
+		}
+
 		return nil
 	},
 }
@@ -169,4 +175,32 @@ var fullConfig = map[string]interface{}{
 			},
 		},
 	},
+}
+
+func ensureGitignore() error {
+	const pattern = ".frizzle/"
+
+	data, err := os.ReadFile(".gitignore")
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+
+	if strings.Contains(string(data), pattern) {
+		return nil
+	}
+
+	f, err := os.OpenFile(".gitignore", os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	if len(data) > 0 && data[len(data)-1] != '\n' {
+		f.Write([]byte("\n"))
+	}
+	f.Write([]byte(pattern + "\n"))
+	return nil
 }

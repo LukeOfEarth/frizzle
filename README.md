@@ -1,5 +1,7 @@
 # frizzle
 
+<p align="center"><img src="frizzle.png" alt="frizzle" width="200"/></p>
+
 Local AWS Event Bus simulator for testing event-driven systems without an AWS account.
 
 ## Install
