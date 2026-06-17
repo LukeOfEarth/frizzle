@@ -21,9 +21,13 @@ type Runtime struct {
 
 var knownRuntimes = []Runtime{
 	{Name: "Claude Code", Path: "~/.claude/skills/frizzle"},
-	{Name: "OpenCode CLI", Path: "~/.agents/skills/frizzle"},
 	{Name: "Codex", Path: "~/.codex/skills/frizzle"},
-	{Name: "I'll specify the directory", Path: ""},
+	{Name: "OpenCode CLI", Path: "~/.agents/skills/frizzle"},
+	{Name: "Cursor", Path: "~/.cursor/skills/frizzle"},
+	{Name: "Windsurf", Path: "~/.windsurf/skills/frizzle"},
+	{Name: "Cline", Path: "~/.cline/skills/frizzle"},
+	{Name: "Amazon Q Developer", Path: "~/.amazonq/skills/frizzle"},
+	{Name: "Goose", Path: "~/.goose/skills/frizzle"},
 }
 
 func TryInstall() error {
@@ -43,42 +47,56 @@ func TryInstall() error {
 		return nil
 	}
 
-	runtimeNames := make([]string, len(knownRuntimes))
+	runtimeLabels := make([]string, len(knownRuntimes))
+	defaultSelection := make([]string, 0, len(knownRuntimes))
 	for i, r := range knownRuntimes {
-		runtimeNames[i] = r.Name
+		runtimeLabels[i] = fmt.Sprintf("%s  (%s)", r.Name, r.Path)
+		if r.exists() {
+			defaultSelection = append(defaultSelection, runtimeLabels[i])
+		}
 	}
 
-	var selected int
-	promptRuntime := &survey.Select{
-		Message: "Which agent runtime are you using?",
-		Options: runtimeNames,
-		Default: runtimeNames[0],
+	var selected []string
+	promptRuntime := &survey.MultiSelect{
+		Message: "Select agent runtimes (space to toggle, enter to confirm):",
+		Options: runtimeLabels,
+		Default: defaultSelection,
 	}
 	if err := survey.AskOne(promptRuntime, &selected); err != nil {
 		return nil
 	}
 
-	targetPath := knownRuntimes[selected].Path
-	if targetPath == "" {
-		promptPath := &survey.Input{
-			Message: "Directory to install the skill into:",
-			Suggest: func(toComplete string) []string {
-				return nil
-			},
-		}
-		if err := survey.AskOne(promptPath, &targetPath); err != nil {
-			return nil
-		}
+	if len(selected) == 0 {
+		fmt.Println("No runtimes selected — skipping skill install")
+		return nil
 	}
 
-	targetPath = expandHome(targetPath)
-
-	if err := installSkill(targetPath); err != nil {
-		return fmt.Errorf("failed to install skill: %w", err)
+	var installed []string
+	for _, label := range selected {
+		idx := indexOf(runtimeLabels, label)
+		if idx < 0 {
+			continue
+		}
+		r := knownRuntimes[idx]
+		targetPath := expandHome(r.Path)
+		if err := installSkill(targetPath); err != nil {
+			fmt.Fprintf(os.Stderr, "  ✗ %s: %v\n", r.Name, err)
+			continue
+		}
+		installed = append(installed, fmt.Sprintf("  ✓ %s → %s", r.Name, targetPath))
 	}
 
-	fmt.Printf("\n✓ Installed frizzle skill to %s\n", targetPath)
+	fmt.Println()
+	for _, line := range installed {
+		fmt.Println(line)
+	}
 	return nil
+}
+
+func (r Runtime) exists() bool {
+	targetPath := expandHome(r.Path)
+	_, err := os.Stat(targetPath)
+	return err == nil
 }
 
 func isTTY() bool {
@@ -150,4 +168,13 @@ func expandHome(path string) string {
 		}
 	}
 	return path
+}
+
+func indexOf(slice []string, item string) int {
+	for i, s := range slice {
+		if s == item {
+			return i
+		}
+	}
+	return -1
 }
