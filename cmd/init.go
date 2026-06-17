@@ -7,13 +7,18 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/LukeOfEarth/frizzle/internal/install"
 	"github.com/spf13/cobra"
 )
 
-var initSimple bool
+var (
+	initSimple  bool
+	initNoSkill bool
+)
 
 func init() {
 	initCmd.Flags().BoolVar(&initSimple, "simple", false, "Generate a minimal single-bus config")
+	initCmd.Flags().BoolVar(&initNoSkill, "no-skill", false, "Skip the agent skill installation prompt")
 	rootCmd.AddCommand(initCmd)
 }
 
@@ -25,7 +30,11 @@ var initCmd = &cobra.Command{
 By default, it generates a full example config with multiple buses, rules,
 and target types to show what's possible.
 
-Use --simple to generate a minimal config with a single catch-all bus.`,
+After creating the config you'll be asked if you want to install the frizzle
+agent skill for supported AI coding tools (Claude Code, Codex, OpenCode).
+
+Use --simple to generate a minimal config with a single catch-all bus.
+Use --no-skill to skip the skill installation prompt.`,
 	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		configPath := filepath.Join(".frizzle", "frizzle.json")
@@ -56,6 +65,12 @@ Use --simple to generate a minimal config with a single catch-all bus.`,
 
 		if err := ensureGitignore(); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: could not update .gitignore: %v\n", err)
+		}
+
+		if !initNoSkill {
+			if err := install.TryInstall(); err != nil {
+				fmt.Fprintf(os.Stderr, "warning: %v\n", err)
+			}
 		}
 
 		return nil
