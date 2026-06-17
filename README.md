@@ -6,20 +6,58 @@ A local AWS EventBridge simulator that lets you build and test event-driven syst
 
 ## Installation
 
-**Go install** (needs Go 1.22+):
+Three ways to install. Pick whichever fits your workflow — they all produce the same `frizzle` binary.
+
+### Go install
 
 ```
 go install github.com/LukeOfEarth/frizzle@latest
 ```
 
-**Homebrew** (macOS / Linux):
+Requires Go 1.22+. Behind the scenes:
+
+1. Go's module proxy finds the latest tagged version by asking `proxy.golang.org`
+2. It fetches the module zip (source code) from the proxy
+3. It runs `go build` on the `main` package at the module root, linking in all dependencies
+4. The resulting binary is placed in `$GOPATH/bin` (usually `~/go/bin`)
+
+This works anywhere Go runs. The binary is compiled for your exact OS and architecture. Version pinning works as usual — `@v0.3.2` for a specific release, `@latest` for the newest.
+
+### Homebrew
 
 ```
 brew tap LukeOfEarth/tap
 brew install frizzle
 ```
 
-**GitHub Releases** — download pre-built binaries for macOS, Linux, and Windows from the [releases page](https://github.com/LukeOfEarth/frizzle/releases).
+How this works:
+
+1. `brew tap LukeOfEarth/tap` registers `https://github.com/LukeOfEarth/homebrew-tap` as a formula source. This is a one-time setup — Homebrew will check here for `frizzle` from now on.
+2. `brew install frizzle` reads the formula (`frizzle.rb`) from that tap repo. The formula tells Homebrew:
+   - Which release URL to download from (matched to your OS and CPU architecture)
+   - The SHA256 checksum to verify the download
+   - How to install (just move the binary into place)
+3. Homebrew downloads the pre-built tarball, verifies the checksum, and installs the binary to its prefix (`/opt/homebrew/bin` on Apple Silicon, `/usr/local/bin` on Intel).
+
+The formula is updated manually after each release. If you want a version that hasn't been pushed to the tap yet, use `go install` or grab the binary directly.
+
+### GitHub Releases
+
+Pre-built, statically-linked binaries for every platform:
+
+- `frizzle_{version}_darwin_amd64.tar.gz` — macOS Intel
+- `frizzle_{version}_darwin_arm64.tar.gz` — macOS Apple Silicon
+- `frizzle_{version}_linux_amd64.tar.gz` — Linux x86_64
+- `frizzle_{version}_linux_arm64.tar.gz` — Linux ARM64
+- `frizzle_{version}_windows_amd64.zip` — Windows x86_64
+
+Every release is built by [GoReleaser](https://goreleaser.com) via a GitHub Actions workflow that triggers on every `v*` tag. The workflow:
+1. Cross-compiles `frizzle` from source for all five targets with `CGO_ENABLED=0` (fully static, no system library dependencies)
+2. Packages each binary into a `.tar.gz` (or `.zip` on Windows)
+3. Generates a `checksums.txt` with SHA256 hashes
+4. Publishes everything as a GitHub Release
+
+No Go toolchain needed on the installing machine — just download, extract, and run.
 
 ## Getting started
 
