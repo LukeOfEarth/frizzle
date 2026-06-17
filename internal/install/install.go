@@ -26,8 +26,11 @@ var knownRuntimes = []Runtime{
 	{Name: "Cursor", Path: "~/.cursor/skills/frizzle"},
 	{Name: "Windsurf", Path: "~/.windsurf/skills/frizzle"},
 	{Name: "Cline", Path: "~/.cline/skills/frizzle"},
+	{Name: "Gemini CLI", Path: "~/.gemini/skills/frizzle"},
 	{Name: "Amazon Q Developer", Path: "~/.amazonq/skills/frizzle"},
 	{Name: "Goose", Path: "~/.goose/skills/frizzle"},
+	{Name: "Hermes", Path: "~/.hermes/skills/frizzle"},
+	{Name: "OpenClaw", Path: "~/.openclaw/skills/frizzle"},
 }
 
 func TryInstall() error {
