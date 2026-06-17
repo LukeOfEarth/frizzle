@@ -16,7 +16,14 @@ go install github.com/LukeOfEarth/frizzle@latest
 
 ```
 brew tap LukeOfEarth/tap
+brew trust lukeofearth/tap            # Homebrew requires explicit trust for third-party taps
 brew install frizzle
+```
+
+If you prefer not to trust the whole tap, you can trust just the formula:
+
+```
+brew trust --formula lukeofearth/tap/frizzle
 ```
 
 **GitHub Releases** — download pre-built binaries for macOS, Linux, and Windows from the [releases page](https://github.com/LukeOfEarth/frizzle/releases).
