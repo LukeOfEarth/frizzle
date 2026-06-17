@@ -31,7 +31,7 @@ By default, it generates a full example config with multiple buses, rules,
 and target types to show what's possible.
 
 After creating the config you'll be asked if you want to install the frizzle
-agent skill for supported AI coding tools (Claude Code, Codex, OpenCode).
+agent skill for supported AI coding tools (Claude Code, OpenCode CLI, Codex).
 
 Use --simple to generate a minimal config with a single catch-all bus.
 Use --no-skill to skip the skill installation prompt.`,

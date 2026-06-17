@@ -21,8 +21,8 @@ type Runtime struct {
 
 var knownRuntimes = []Runtime{
 	{Name: "Claude Code", Path: "~/.claude/skills/frizzle"},
-	{Name: "Codex (OpenCode)", Path: "~/.codex/skills/frizzle"},
-	{Name: "OpenCode (agents)", Path: "~/.agents/skills/frizzle"},
+	{Name: "OpenCode CLI", Path: "~/.agents/skills/frizzle"},
+	{Name: "Codex", Path: "~/.codex/skills/frizzle"},
 	{Name: "I'll specify the directory", Path: ""},
 }
 
